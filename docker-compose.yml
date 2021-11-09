@@ -1,0 +1,112 @@
+version: "3.8"
+services:
+  db-postgres:
+    image: 'postgres'
+    volumes:
+      - /home/viktor/Projekty/KCM-database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: hello 
+      POSTGRES_USER: vibri 
+      POSTGRES_DB: KCM
+    ports:
+      - '5432:5432'
+  
+  pg-admin:
+    image: 'dpage/pgadmin4'
+    environment: 
+      PGADMIN_DEFAULT_EMAIL: user@domain.local
+      PGADMIN_DEFAULT_PASSWORD: SuperSecret
+    ports:
+      - '90:80' 
+
+  zookeeper-dev:
+    image: confluentinc/cp-zookeeper:latest
+    volumes:
+      - /home/viktor/Projekty/KCM-zookeeper-dev-DATA:/var/lib/zookeeper/data
+      - /home/viktor/Projekty/KCM-zookeeper-dev-TXN-LOGS:/var/lib/zookeeper/log
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 22181:2181
+
+  kafka-dev:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper-dev
+    volumes:
+      - /home/viktor/Projekty/KCM-kafka-dev-KAFKA-DATA:/var/lib/kafka/data
+    ports:
+      - 29092:29092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-dev:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-dev:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  schema-registry-dev:
+    image: confluentinc/cp-schema-registry:latest
+    ports:
+      - 28081:8081
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-dev:9092
+      SCHEMA_REGISTRY_HOST_NAME: "schema-registry-dev"
+      SCHEMA_REGISTRY_LISTENERS: http://schema-registry-dev:8081
+      SCHEMA_REGISTRY_DEBUG: "true"
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: "forward_transitive"
+
+  zookeeper-prod:
+    image: confluentinc/cp-zookeeper:latest
+    volumes:
+      - /home/viktor/Projekty/KCM-zookeeper-prod-DATA:/var/lib/zookeeper/data
+      - /home/viktor/Projekty/KCM-zookeeper-prod-TXN-LOGS:/var/lib/zookeeper/log
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 32181:2181
+
+  kafka-prod-1:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper-prod
+    volumes:
+      - /home/viktor/Projekty/KCM-kafka-prod-1-KAFKA-DATA:/var/lib/kafka/data
+    ports:
+      - 39092:39092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-prod:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-prod-1:9092,PLAINTEXT_HOST://localhost:39092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  kafka-prod-2:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper-prod
+    volumes:
+      - /home/viktor/Projekty/KCM-kafka-prod-2-KAFKA-DATA:/var/lib/kafka/data
+    ports:
+      - 49092:49092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper-prod:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-prod-2:9092,PLAINTEXT_HOST://localhost:49092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  schema-registry-prod:
+    image: confluentinc/cp-schema-registry:latest
+    ports:
+      - 38081:8081
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-prod-1:9092,PLAINTEXT://kafka-prod-2:9092
+      SCHEMA_REGISTRY_HOST_NAME: "schema-registry-prod"
+      SCHEMA_REGISTRY_LISTENERS: http://schema-registry-prod:8081
+      SCHEMA_REGISTRY_DEBUG: "true"
+      SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL: "forward_transitive"
